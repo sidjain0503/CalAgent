@@ -2,6 +2,42 @@ import { google } from 'googleapis';
 import { CalendarEvent, CalendarService } from './types';
 import { GOOGLE_CALENDAR_CONFIG } from '../../config/calendar';
 
+// Helper function to notify all connected clients
+const notifyClients = (eventType: 'create' | 'update' | 'delete') => {
+  console.log('=== Starting notifyClients ===');
+  console.log('Global clients:', {
+    exists: !!global.calendarClients,
+    size: global.calendarClients?.size || 0
+  });
+
+  if (!global.calendarClients || global.calendarClients.size === 0) {
+    console.log('No clients connected to notify');
+    return;
+  }
+
+  console.log(`Notifying ${global.calendarClients.size} clients of ${eventType} event`);
+  
+  const message = JSON.stringify({
+    type: 'update',
+    eventType,
+    timestamp: new Date().toISOString()
+  });
+
+  console.log('Sending message:', message);
+
+  // Convert to array to avoid iteration issues
+  Array.from(global.calendarClients.entries()).forEach(([clientId, res]) => {
+    try {
+      res.write(`data: ${message}\n\n`);
+      console.log(`Successfully notified client ${clientId}`);
+    } catch (error) {
+      console.error(`Failed to notify client ${clientId}:`, error);
+      global.calendarClients.delete(clientId);
+    }
+  });
+  console.log('=== Finished notifyClients ===');
+};
+
 export class GoogleCalendarService implements CalendarService {
   private auth;
   private calendar;
@@ -34,7 +70,14 @@ export class GoogleCalendarService implements CalendarService {
   }
 
   async createEvent(event: CalendarEvent): Promise<CalendarEvent> {
+    console.log('=== Starting createEvent ===');
     try {
+      console.log('Creating event:', {
+        summary: event.summary,
+        start: event.start,
+        end: event.end
+      });
+
       const response = await this.calendar.events.insert({
         calendarId: 'primary',
         requestBody: {
@@ -52,6 +95,10 @@ export class GoogleCalendarService implements CalendarService {
         },
       });
 
+      console.log('Event created successfully, calling notifyClients');
+      notifyClients('create');
+      
+      console.log('=== Finished createEvent ===');
       return response.data as CalendarEvent;
     } catch (error) {
       console.error('Error creating event:', error);
@@ -73,6 +120,7 @@ export class GoogleCalendarService implements CalendarService {
         },
       });
 
+      notifyClients('update');
       return response.data as CalendarEvent;
     } catch (error) {
       console.error('Error updating event:', error);
@@ -86,6 +134,8 @@ export class GoogleCalendarService implements CalendarService {
         calendarId: 'primary',
         eventId: eventId,
       });
+
+      notifyClients('delete');
     } catch (error) {
       console.error('Error deleting event:', error);
       throw new Error('Failed to delete calendar event');

@@ -1,15 +1,26 @@
 import { useState } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ChatInterface from '../components/ChatInterface';
+import ResizableLayout from '../components/Layout/ResizableLayout';
+import LeftPanel from '../components/LeftPanel/LeftPanel';
+import CalendarView from '../components/Calendar/CalendarView';
 import { Message } from '../types/agent';
+
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: true,
+    },
+  },
+});
 
 export default function TestPage() {
   const { data: session, status } = useSession();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
-  console.log('Session:', session);
-  console.log('Auth Status:', status);
 
   const handleSendMessage = async (content: string) => {
     setIsLoading(true);
@@ -43,6 +54,13 @@ export default function TestPage() {
 
       const data = await response.json();
       
+      // Check if the response indicates a calendar operation was performed
+      if (data.calendarOperation) {
+        console.log('Calendar operation detected:', data.calendarOperation);
+        // Invalidate queries to trigger a refresh
+        queryClient.invalidateQueries({ queryKey: ['events'] });
+      }
+      
       const assistantMessage: Message = {
         role: 'assistant',
         content: data.response,
@@ -64,7 +82,7 @@ export default function TestPage() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen bg-transparent flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-white">Loading...</div>
       </div>
     );
@@ -72,8 +90,8 @@ export default function TestPage() {
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-transparent flex flex-col items-center justify-center">
-        <h1 className="text-2xl text-white font-medium mb-8 font-primary">Calendar Agent</h1>
+      <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center">
+        <h1 className="text-2xl text-white font-medium mb-8">Calendar Agent</h1>
         <button
           onClick={() => signIn('google')}
           className="px-6 py-3 bg-white text-gray-900 rounded-lg font-primary 
@@ -104,24 +122,38 @@ export default function TestPage() {
   }
 
   return (
-    <div className="min-h-screen bg-transparent p-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl text-white font-medium font-primary">Calendar Agent</h1>
-          <button
-            onClick={() => signOut()}
-            className="px-4 py-2 text-white border border-white/20 rounded-lg 
-                     hover:bg-white/10 transition-colors"
-          >
-            Sign out
-          </button>
-        </div>
-        <ChatInterface
-          messages={messages}
-          onSendMessage={handleSendMessage}
-          isLoading={isLoading}
-        />
-      </div>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <ResizableLayout
+        leftPanel={<LeftPanel messages={messages} />}
+        chatPanel={
+          <div className="h-full flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b border-gray-700">
+              <h1 className="text-xl text-white font-medium">Calendar Agent</h1>
+              <button
+                onClick={() => signOut()}
+                className="px-4 py-2 text-white border border-white/20 rounded-lg 
+                         hover:bg-white/10 transition-colors"
+              >
+                Sign out
+              </button>
+            </div>
+            <ChatInterface
+              messages={messages}
+              onSendMessage={handleSendMessage}
+              isLoading={isLoading}
+            />
+          </div>
+        }
+        calendarPanel={
+          <CalendarView 
+            onEventDrop={(event, start, end) => {
+              console.log('Event dropped:', { event, start, end });
+              // Trigger a refetch after event changes
+              queryClient.invalidateQueries({ queryKey: ['events'] });
+            }}
+          />
+        }
+      />
+    </QueryClientProvider>
   );
 } 

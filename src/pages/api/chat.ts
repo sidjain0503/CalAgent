@@ -1,37 +1,66 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getServerSession } from "next-auth/next";
+import { getServerSession } from 'next-auth';
 import { authOptions } from "./auth/[...nextauth]";
 import CalendarAgent from '../../lib/agent';
+import { GoogleCalendarService } from '../../lib/calendar/google';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    // Use getServerSession instead of getSession
-    const session = await getServerSession(req, res, authOptions);
-    console.log('API Session:', JSON.stringify(session, null, 2));
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-    if (!session) {
-      console.log('No session found in API route');
+  try {
+    const session = await getServerSession(req, res, authOptions);
+    if (!session?.accessToken) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
-    if (!session.accessToken) {
-      console.log('No access token found in API route');
-      return res.status(401).json({ error: 'No access token' });
+    const { message } = req.body;
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
     }
 
-    if (req.method !== 'POST') {
-      return res.status(405).end();
-    }
-
+    const calendarService = new GoogleCalendarService(session.accessToken);
     const agent = new CalendarAgent(process.env.OPENAI_API_KEY!);
-    const response = await agent.processMessage(
-      req.body.message,
+
+    // Track if any calendar operations were performed
+    let calendarOperation = null;
+
+    // Intercept calendar operations
+    const wrappedCalendarService = {
+      ...calendarService,
+      createEvent: async (event) => {
+        const result = await calendarService.createEvent(event);
+        calendarOperation = 'create';
+        return result;
+      },
+      updateEvent: async (eventId, event) => {
+        const result = await calendarService.updateEvent(eventId, event);
+        calendarOperation = 'update';
+        return result;
+      },
+      deleteEvent: async (eventId) => {
+        await calendarService.deleteEvent(eventId);
+        calendarOperation = 'delete';
+      }
+    };
+
+    // Use wrapped service
+    const wrappedAgent = new CalendarAgent(process.env.OPENAI_API_KEY!);
+    const response = await wrappedAgent.processMessage(
+      message,
       session.accessToken
     );
 
-    res.status(200).json({ response });
+    return res.status(200).json({ 
+      response,
+      calendarOperation // Include in response if any operation was performed
+    });
   } catch (error) {
     console.error('Chat API Error:', error);
-    res.status(500).json({ error: 'Failed to process message' });
+    return res.status(500).json({ 
+      error: 'Failed to process chat request',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 } 

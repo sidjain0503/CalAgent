@@ -1,41 +1,46 @@
 # AI Calendar Agent
 
 ## Overview
-An intelligent calendar management system powered by OpenAI's GPT models. This agent can understand natural language inputs to help manage your calendar, schedule meetings, and handle various calendar-related tasks.
+An intelligent calendar management system powered by OpenAI's GPT models. This agent can understand natural language inputs to help manage your calendar, schedule meetings, and handle various calendar-related tasks through a modern, real-time interface.
 
 ## Features
 - 🤖 Natural language processing for calendar management
 - 📅 Intelligent scheduling assistance
 - 💬 Contextual conversation memory
-- 🛠 Extensible tool system
-- 🔄 Real-time response generation
+- 🔄 Real-time calendar updates
+- 🎨 Modern, responsive UI
+- 🔒 Secure Google Calendar integration
 
 ## Tech Stack
-- Next.js (Frontend & API routes)
+- Next.js 14
 - TypeScript
 - OpenAI GPT-4
 - TailwindCSS
-- MongoDB (coming soon)
+- React Query
+- NextAuth.js
+- Google Calendar API
 
 ## Project Structure
 ```
 calendar-agent/
 ├── src/
+│   ├── components/
+│   │   ├── Calendar/       # Calendar components
+│   │   ├── Layout/         # Layout components
+│   │   └── LeftPanel/      # Left panel components
 │   ├── lib/
-│   │   ├── agent.ts        # Core agent implementation
-│   │   └── memory.ts       # Memory management system
+│   │   ├── agent/         # Agent implementation
+│   │   └── calendar/      # Calendar service
 │   ├── pages/
 │   │   ├── api/
-│   │   │   └── chat.ts     # Chat API endpoint
-│   │   ├── _app.tsx        # Next.js app configuration
-│   │   └── test.tsx        # Test interface
-│   ├── styles/
-│   │   └── globals.css     # Global styles
+│   │   │   ├── auth/      # Authentication endpoints
+│   │   │   ├── calendar/  # Calendar endpoints
+│   │   │   └── chat.ts    # Chat endpoint
+│   │   └── test.tsx       # Main application page
 │   └── types/
-│       └── agent.ts        # TypeScript definitions
-├── .env                    # Environment variables
-├── package.json           
-└── README.md
+│       └── agent.ts       # TypeScript definitions
+├── .env                   # Environment variables
+└── package.json
 ```
 
 ## Getting Started
@@ -44,74 +49,64 @@ calendar-agent/
 - Node.js 16+
 - npm or yarn
 - OpenAI API key
+- Google Cloud Project with Calendar API enabled
 
 ### Installation
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/calendar-agent.git
-cd calendar-agent
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
+1. Clone the repository
+2. Install dependencies: `npm install`
 3. Set up environment variables:
-```bash
-cp .env.example .env
-# Add your OpenAI API key to .env
-```
+   ```
+   NEXTAUTH_URL=http://localhost:3000
+   NEXTAUTH_SECRET=your-secret
+   OPENAI_API_KEY=your-openai-key
+   GOOGLE_CLIENT_ID=your-google-client-id
+   GOOGLE_CLIENT_SECRET=your-google-client-secret
+   ```
+4. Run the development server: `npm run dev`
+5. Open [http://localhost:3000/test](http://localhost:3000/test)
 
-4. Run the development server:
-```bash
-npm run dev
-```
+## Features
 
-5. Open [http://localhost:3000/test](http://localhost:3000/test) to view the test interface
+### Calendar View
+- Day/Week view support
+- Real-time updates
+- Event visualization
+- Current time indicator
+- Interactive time grid
 
-## Usage
+### Chat Interface
+- Natural language processing
+- Context-aware responses
+- Real-time message updates
+- Markdown support
+- Error handling
 
-### Basic Interaction
-```typescript
-const agent = new CalendarAgent(process.env.OPENAI_API_KEY);
-const response = await agent.processMessage("Schedule a meeting tomorrow at 2 PM");
-```
+### Google Calendar Integration
+- OAuth2 authentication
+- Event management
+- Real-time sync
+- Availability checking
 
-### Example Commands
-- "Schedule a meeting with John tomorrow at 2 PM"
-- "What's my next meeting?"
-- "Move my 3 PM meeting to 4 PM"
-- "Show me my calendar for next week"
+## Development Status
 
-## Development Roadmap
-
-### Phase 1 (Current)
+### Completed
 - ✅ Basic agent implementation
-- ✅ Conversation handling
-- ✅ OpenAI integration
-- ✅ Test interface
+- ✅ Google Calendar integration
+- ✅ Real-time calendar updates
+- ✅ Modern UI implementation
+- ✅ Authentication system
 
-### Phase 2 (In Progress)
-- 🔄 Google Calendar integration
-- 🔄 Enhanced memory system
-- 🔄 Tool framework implementation
-
+### In Progress
+- 🔄 Week view enhancement
+- 🔄 Event creation UI
+- 🔄 Drag-and-drop support
+- 🔄 Mobile optimization
 
 ## Contributing
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+Contributions are welcome! Please read our contributing guidelines for details.
 
 ## License
-This project is licensed under the MIT License - see the LICENSE file for details
-
-## Acknowledgments
-- OpenAI for GPT models
-- Next.js team for the amazing framework
-- Contributors and supporters
+This project is licensed under the MIT License.
 
 ## Contact
 [@siddharthtwt](https://twitter.com/siddharthtwt)

@@ -1,4 +1,5 @@
-import NextAuth, { AuthOptions } from 'next-auth';
+import NextAuth, { AuthOptions, Session, User } from 'next-auth';
+import { JWT } from 'next-auth/jwt';
 import GoogleProvider from 'next-auth/providers/google';
 import { GOOGLE_CALENDAR_CONFIG } from '../../../config/calendar';
 
@@ -18,18 +19,36 @@ export const authOptions: AuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, account }) {
-      console.log('JWT Callback:', { token, account });
+    async jwt({ token, account, user }) {
+      console.log('JWT Callback:', { 
+        hasToken: !!token, 
+        hasAccount: !!account,
+        hasUser: !!user,
+        accessToken: account?.access_token
+      });
+
       if (account) {
         token.accessToken = account.access_token;
       }
       return token;
     },
-    async session({ session, token }: { session: any; token: any }) {
-      console.log('Session Callback:', { session, token });
-      session.accessToken = token.accessToken;
-      return session;
+    async session({ session, token, user }) {
+      console.log('Session Callback:', { 
+        hasSession: !!session,
+        hasToken: !!token,
+        hasUser: !!user,
+        accessToken: token.accessToken
+      });
+
+      return {
+        ...session,
+        accessToken: token.accessToken as string,
+      };
     },
+  },
+  pages: {
+    signIn: '/',
+    error: '/',
   },
   debug: true,
 };
