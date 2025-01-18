@@ -1,48 +1,130 @@
 import OpenAI from 'openai';
-import { Message, Tool } from '../types/agent';
+import { Message, CalendarFunctionName, CalendarFunctionParams, AgentMessage, CalendarResponse } from '../types/agent';
+import { GoogleCalendarService } from '../services/calendar';
 
-/**
- * CalendarAgent Class
- * 
- * Uses GPT-4 Turbo (gpt-4-0125-preview) - the latest model with:
- * - Improved instruction following
- * - More consistent output
- * - Better JSON mode support
- * - Reduced hallucinations
- * 
- * Architecture:
- * 1. Memory System: Maintains conversation history for context 
- * 2. Tool System: Uses OpenAI's function calling for calendar operations
- * 3. Response Format: Structured outputs for calendar operations
- */
-class CalendarAgent {
-  private memory: Message[];
-  private tools: Map<string, Tool>;
-  private openai: OpenAI;
-  private readonly MODEL = "gpt-4o";  
-  
-  // Available functions for the model to call
-  private readonly FUNCTIONS = [
-    {
-      name: "create_calendar_event",
-      description: "Create a new calendar event",
-      parameters: {
-        type: "object",
-        properties: {
-          title: { type: "string", description: "Title of the event" },
-          start_time: { type: "string", description: "Start time in ISO format" },
-          end_time: { type: "string", description: "End time in ISO format" },
-          description: { type: "string", description: "Event description" },
-          attendees: { 
-            type: "array", 
-            items: { type: "string" },
-            description: "List of attendee email addresses"
+const CALENDAR_FUNCTIONS = [
+  {
+    name: 'createEvent',
+    description: 'Create a new calendar event',
+    parameters: {
+      type: 'object',
+      properties: {
+        summary: { type: 'string', description: 'Title of the event' },
+        startDateTime: { type: 'string', format: 'date-time', description: 'Start time of the event (ISO format)' },
+        endDateTime: { type: 'string', format: 'date-time', description: 'End time of the event (ISO format)' },
+        description: { type: 'string', description: 'Description of the event' },
+        attendees: { 
+          type: 'array', 
+          items: { type: 'string' },
+          description: 'List of attendee email addresses'
+        },
+        location: { type: 'string', description: 'Location of the event' }
+      },
+      required: ['summary', 'startDateTime', 'endDateTime']
+    }
+  },
+  {
+    name: 'updateEvent',
+    description: 'Update an existing calendar event',
+    parameters: {
+      type: 'object',
+      properties: {
+        eventId: { type: 'string', description: 'ID of the event to update' },
+        summary: { type: 'string', description: 'New title of the event' },
+        startDateTime: { type: 'string', format: 'date-time', description: 'New start time' },
+        endDateTime: { type: 'string', format: 'date-time', description: 'New end time' },
+        description: { type: 'string', description: 'New description' },
+        attendees: { type: 'array', items: { type: 'string' } },
+        location: { type: 'string' }
+      },
+      required: ['eventId']
+    }
+  },
+  {
+    name: 'deleteEvent',
+    description: 'Delete a calendar event',
+    parameters: {
+      type: 'object',
+      properties: {
+        eventId: { type: 'string', description: 'ID of the event to delete' }
+      },
+      required: ['eventId']
+    }
+  },
+  {
+    name: 'checkAvailability',
+    description: 'Check availability for a time slot',
+    parameters: {
+      type: 'object',
+      properties: {
+        timeMin: { type: 'string', format: 'date-time', description: 'Start of time range' },
+        timeMax: { type: 'string', format: 'date-time', description: 'End of time range' }
+      },
+      required: ['timeMin', 'timeMax']
+    }
+  },
+  {
+    name: 'listEvents',
+    description: 'List calendar events in a time range',
+    parameters: {
+      type: 'object',
+      properties: {
+        timeMin: { type: 'string', format: 'date-time', description: 'Start of time range' },
+        timeMax: { type: 'string', format: 'date-time', description: 'End of time range' }
+      },
+      required: ['timeMin', 'timeMax']
+    }
+  },
+  {
+    name: 'createMultipleEvents',
+    description: 'Create multiple calendar events in a single batch operation',
+    parameters: {
+      type: 'object',
+      properties: {
+        events: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              summary: { type: 'string', description: 'Title of the event' },
+              startDateTime: { type: 'string', format: 'date-time', description: 'Start time of the event (ISO format)' },
+              endDateTime: { type: 'string', format: 'date-time', description: 'End time of the event (ISO format)' },
+              description: { type: 'string', description: 'Description of the event' },
+              attendees: { 
+                type: 'array', 
+                items: { type: 'string' },
+                description: 'List of attendee email addresses'
+              },
+              location: { type: 'string', description: 'Location of the event' }
+            },
+            required: ['summary', 'startDateTime', 'endDateTime']
           }
         },
-        required: ["title", "start_time"]
-      }
+        options: {
+          type: 'object',
+          properties: {
+            stopOnError: { 
+              type: 'boolean',
+              description: 'Whether to stop processing if an error occurs'
+            },
+            validateOnly: {
+              type: 'boolean',
+              description: 'Only validate the events without creating them'
+            }
+          }
+        }
+      },
+      required: ['events']
     }
-  ];
+  }
+];
+
+class CalendarAgent {
+  private memory: Message[];
+  private openai: OpenAI;
+  private calendarService: GoogleCalendarService | null = null;
+  private readonly MODEL = "gpt-4-0125-preview";
+  private userTimezone: string;
 
   constructor(apiKey: string) {
     if (!apiKey) {
@@ -50,57 +132,92 @@ class CalendarAgent {
     }
     
     this.memory = [];
-    this.tools = new Map();
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
+    this.userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   }
 
-  private prepareMessages(userInput: string): Array<{ role: string; content: string }> {
-    const systemPrompt = {
-      role: "system",
-      content: `You are an advanced AI calendar assistant powered by GPT-4.
-      
-      Your capabilities:
-      - Parse natural language into structured calendar operations
-      - Manage events and schedules
-      - Provide clear, concise responses
-      - Maintain conversation context
-      
-      Guidelines:
-      1. Always confirm critical details before suggesting actions
-      2. Use ISO format for dates and times
-      3. Be explicit about timezone assumptions
-      4. Ask for clarification when details are ambiguous
-      
-      Example interaction:
-      User: "Schedule a meeting with John tomorrow at 2 PM"
-      Assistant: "I'll help you schedule that. A few questions:
-      1. How long should the meeting be?
-      2. Do you have John's email address?
-      3. Is this 2 PM in your local timezone?
-      4. Would you like me to add any meeting description?"
-      `
-    };
+  private getCurrentDateContext(): string {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', { 
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    const timeStr = now.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZoneName: 'short'
+    });
 
-    const recentMessages = this.memory.slice(-5).map(msg => ({
-      role: msg.role,
-      content: msg.content
-    }));
-
-    return [
-      systemPrompt,
-      ...recentMessages,
-    ];
+    return `Current date and time: ${dateStr} ${timeStr} (${this.userTimezone})`;
   }
 
-  async processMessage(userInput: string): Promise<string> {
+  private setCalendarService(accessToken: string) {
+    this.calendarService = new GoogleCalendarService(accessToken);
+  }
+
+  private async handleFunctionCall(
+    name: CalendarFunctionName, 
+    args: any
+  ): Promise<CalendarResponse> {
+    if (!this.calendarService) {
+      return {
+        success: false,
+        error: 'Calendar service not initialized',
+        message: 'Please ensure you are authenticated'
+      };
+    }
+
+    try {
+      switch (name) {
+        case 'createEvent':
+          return await this.calendarService.createEvent(args);
+        
+        case 'updateEvent':
+          return await this.calendarService.updateEvent(args.eventId, args);
+        
+        case 'deleteEvent':
+          return await this.calendarService.deleteEvent(args.eventId);
+        
+        case 'checkAvailability':
+          return await this.calendarService.checkAvailability(args.timeMin, args.timeMax);
+        
+        case 'listEvents':
+          return await this.calendarService.getEvents(args.timeMin, args.timeMax);
+
+        case 'createMultipleEvents':
+          return await this.calendarService.createMultipleEvents(args);
+        
+        default:
+          return {
+            success: false,
+            error: 'Unsupported function',
+            message: `Function ${name} is not supported`
+          };
+      }
+    } catch (error) {
+      console.error('Error executing function:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Failed to execute calendar operation'
+      };
+    }
+  }
+
+  async processMessage(userInput: string, accessToken: string): Promise<string> {
     if (!userInput?.trim()) {
       return "Please provide a valid message.";
     }
     if (userInput.length > 1000) {
       return "Message too long. Please keep it under 1000 characters.";
     }
+
+    // Initialize calendar service with access token
+    this.setCalendarService(accessToken);
 
     const message: Message = {
       role: 'user',
@@ -110,38 +227,99 @@ class CalendarAgent {
 
     this.memory.push(message);
     
-    const response = await this.generateResponse(userInput);
-    
-    this.memory.push({
-      role: 'assistant',
-      content: response,
-      timestamp: new Date(),
-    });
-
-    return response;
-  }
-
-  private async generateResponse(userInput: string): Promise<string> {
     try {
-      const messages = this.prepareMessages(userInput);
-      
       const completion = await this.openai.chat.completions.create({
         model: this.MODEL,
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 500,
+        messages: [
+          {
+            role: "system",
+            content: `You are a helpful calendar assistant. ${this.getCurrentDateContext()}
+
+            Help users manage their calendar by:
+            1. Creating single or multiple events
+            2. Updating and deleting events
+            3. Checking availability
+            4. Listing events
+            
+            When handling dates and times:
+            - Use the current date/time as reference for relative times (e.g., "tomorrow", "next week")
+            - Always consider the user's timezone: ${this.userTimezone}
+            - For ambiguous times, ask for clarification
+            - Default meeting duration to 1 hour unless specified
+            
+            For multiple events:
+            - Use createMultipleEvents function when user wants to create several events at once
+            - Batch process related events together
+            - Validate all event times before creating
+            - Provide a summary of successes and failures
+            
+            For calendar operations, use the appropriate function.
+            For general questions or unclear requests, ask for clarification.
+            Keep responses concise and professional.`
+          },
+          ...this.memory.map(msg => ({
+            role: msg.role,
+            content: msg.content,
+            name: msg.name
+          }))
+        ],
+        functions: CALENDAR_FUNCTIONS,
+        temperature: 0.7
       });
 
-      return completion.choices[0]?.message?.content || "I couldn't generate a response";
+      const assistantMessage = completion.choices[0]?.message;
       
-    } catch (error) {
-      if (error instanceof OpenAI.APIError) {
-        console.error('OpenAI API Error:', error);
-        return "I encountered an API error. Please try again in a moment.";
+      if (!assistantMessage) {
+        throw new Error('No response from assistant');
       }
-      
-      console.error('Unexpected error:', error);
-      return "I encountered an unexpected error while processing your request.";
+
+      let response: string;
+
+      if (assistantMessage.function_call) {
+        // Handle function call
+        const { name, arguments: args } = assistantMessage.function_call;
+        const result = await this.handleFunctionCall(
+          name as CalendarFunctionName,
+          JSON.parse(args)
+        );
+
+        // Add function result to memory
+        this.memory.push({
+          role: 'function',
+          name,
+          content: JSON.stringify(result),
+          timestamp: new Date()
+        });
+
+        // Get final response
+        const finalCompletion = await this.openai.chat.completions.create({
+          model: this.MODEL,
+          messages: [
+            ...this.memory.map(msg => ({
+              role: msg.role,
+              content: msg.content,
+              name: msg.name
+            }))
+          ],
+          temperature: 0.7
+        });
+
+        response = finalCompletion.choices[0]?.message?.content || "I couldn't process the calendar operation.";
+      } else {
+        response = assistantMessage.content || "I couldn't generate a response.";
+      }
+
+      this.memory.push({
+        role: 'assistant',
+        content: response,
+        timestamp: new Date(),
+      });
+
+      return response;
+
+    } catch (error) {
+      console.error('Error processing message:', error);
+      return "I encountered an error while processing your request. Please try again.";
     }
   }
 }

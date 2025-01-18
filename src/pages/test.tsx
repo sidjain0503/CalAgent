@@ -8,6 +8,9 @@ export default function TestPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  console.log('Session:', session);
+  console.log('Auth Status:', status);
+
   const handleSendMessage = async (content: string) => {
     setIsLoading(true);
     
@@ -24,11 +27,19 @@ export default function TestPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          message: content,
-          accessToken: session?.accessToken 
-        }),
+        body: JSON.stringify({ message: content }),
+        credentials: 'same-origin',
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('API Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: errorData
+        });
+        throw new Error(errorData.error || 'API request failed');
+      }
 
       const data = await response.json();
       
