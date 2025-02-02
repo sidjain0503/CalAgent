@@ -6,7 +6,7 @@ An intelligent calendar management system powered by OpenAI's GPT models. This a
 
 ## Demo
 
-![AI Calendar Agent Demo](/public/Calagent.mov)
+![AI Calendar Agent Demo](/public/Calagent.mp4)
 
 ## Features
 
