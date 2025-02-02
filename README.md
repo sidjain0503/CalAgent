@@ -1,9 +1,15 @@
 # AI Calendar Agent
 
 ## Overview
+
 An intelligent calendar management system powered by OpenAI's GPT models. This agent can understand natural language inputs to help manage your calendar, schedule meetings, and handle various calendar-related tasks through a modern, real-time interface.
 
+## Demo
+
+![AI Calendar Agent Demo](/public/Calagent.mov)
+
 ## Features
+
 - 🤖 Natural language processing for calendar management
 - 📅 Intelligent scheduling assistance
 - 💬 Contextual conversation memory
@@ -12,6 +18,7 @@ An intelligent calendar management system powered by OpenAI's GPT models. This a
 - 🔒 Secure Google Calendar integration
 
 ## Tech Stack
+
 - Next.js 14
 - TypeScript
 - OpenAI GPT-4
@@ -21,6 +28,7 @@ An intelligent calendar management system powered by OpenAI's GPT models. This a
 - Google Calendar API
 
 ## Project Structure
+
 ```
 calendar-agent/
 ├── src/
@@ -46,12 +54,14 @@ calendar-agent/
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js 16+
 - npm or yarn
 - OpenAI API key
 - Google Cloud Project with Calendar API enabled
 
 ### Installation
+
 1. Clone the repository
 2. Install dependencies: `npm install`
 3. Set up environment variables:
@@ -68,6 +78,7 @@ calendar-agent/
 ## Features
 
 ### Calendar View
+
 - Day/Week view support
 - Real-time updates
 - Event visualization
@@ -75,6 +86,7 @@ calendar-agent/
 - Interactive time grid
 
 ### Chat Interface
+
 - Natural language processing
 - Context-aware responses
 - Real-time message updates
@@ -82,6 +94,7 @@ calendar-agent/
 - Error handling
 
 ### Google Calendar Integration
+
 - OAuth2 authentication
 - Event management
 - Real-time sync
@@ -90,6 +103,7 @@ calendar-agent/
 ## Development Status
 
 ### Completed
+
 - ✅ Basic agent implementation
 - ✅ Google Calendar integration
 - ✅ Real-time calendar updates
@@ -97,16 +111,20 @@ calendar-agent/
 - ✅ Authentication system
 
 ### In Progress
+
 - 🔄 Week view enhancement
 - 🔄 Event creation UI
 - 🔄 Drag-and-drop support
 - 🔄 Mobile optimization
 
 ## Contributing
+
 Contributions are welcome! Please read our contributing guidelines for details.
 
 ## License
+
 This project is licensed under the MIT License.
 
 ## Contact
+
 [@siddharthtwt](https://twitter.com/siddharthtwt)

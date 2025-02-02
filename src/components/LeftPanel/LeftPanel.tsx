@@ -128,7 +128,7 @@ export default function LeftPanel({
         </button>
 
         {/* Sessions List */}
-        <div className="flex-1 overflow-y-auto space-y-2">
+        <div className="flex-1 overflow-y-auto space-y-2 relative">
           {isLoading && sessions.length === 0 ? (
             <div className="text-center text-gray-400">Loading sessions...</div>
           ) : sessions.length === 0 ? (
@@ -159,8 +159,18 @@ export default function LeftPanel({
               </button>
             ))
           )}
+
+          <UserProfile />
         </div>
       </div>
     </>
   );
 }
+
+const UserProfile = () => {
+  return (
+    <div className="absolute bottom-2 left-0 py-4 w-full border-t border-gray-700">
+      User Profile
+    </div>
+  );
+};
