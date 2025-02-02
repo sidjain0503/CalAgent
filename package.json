@@ -15,6 +15,8 @@
     "date-fns": "^4.1.0",
     "google-auth-library": "^9.15.0",
     "googleapis": "^144.0.0",
+    "lucide-react": "^0.474.0",
+    "mongodb": "^6.13.0",
     "next": "^14.0.4",
     "next-auth": "^4.24.11",
     "openai": "^4.0.0",

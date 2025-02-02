@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { useSession, signIn, signOut } from 'next-auth/react';
+import { useSession, signIn } from 'next-auth/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ChatInterface from '../components/ChatInterface';
 import ResizableLayout from '../components/Layout/ResizableLayout';
 import LeftPanel from '../components/LeftPanel/LeftPanel';
 import CalendarView from '../components/Calendar/CalendarView';
-import { Message } from '../types/agent';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -19,66 +18,7 @@ const queryClient = new QueryClient({
 
 export default function TestPage() {
   const { data: session, status } = useSession();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSendMessage = async (content: string) => {
-    setIsLoading(true);
-    
-    const userMessage: Message = {
-      role: 'user',
-      content,
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, userMessage]);
-
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: content }),
-        credentials: 'same-origin',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('API Error:', {
-          status: response.status,
-          statusText: response.statusText,
-          data: errorData
-        });
-        throw new Error(errorData.error || 'API request failed');
-      }
-
-      const data = await response.json();
-      
-      // Check if the response indicates a calendar operation was performed
-      if (data.calendarOperation) {
-        console.log('Calendar operation detected:', data.calendarOperation);
-        // Invalidate queries to trigger a refresh
-        queryClient.invalidateQueries({ queryKey: ['events'] });
-      }
-      
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: data.response,
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error('Error:', error);
-      const errorMessage: Message = {
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [currentSessionId, setCurrentSessionId] = useState<string>();
 
   if (status === "loading") {
     return (
@@ -124,31 +64,26 @@ export default function TestPage() {
   return (
     <QueryClientProvider client={queryClient}>
       <ResizableLayout
-        leftPanel={<LeftPanel messages={messages} />}
+        leftPanel={
+          <LeftPanel
+            onSessionSelect={setCurrentSessionId}
+            currentSessionId={currentSessionId}
+          />
+        }
         chatPanel={
-          <div className="h-full flex flex-col">
-            <div className="flex justify-between items-center p-4 border-b border-gray-700">
-              <h1 className="text-xl text-white font-medium">Calendar Agent</h1>
-              <button
-                onClick={() => signOut()}
-                className="px-4 py-2 text-white border border-white/20 rounded-lg 
-                         hover:bg-white/10 transition-colors"
-              >
-                Sign out
-              </button>
-            </div>
-            <ChatInterface
-              messages={messages}
-              onSendMessage={handleSendMessage}
-              isLoading={isLoading}
-            />
-          </div>
+          <ChatInterface
+            sessionId={currentSessionId}
+            onNewSession={() => {
+              // This will trigger the creation of a new session
+              // The LeftPanel will fetch and display it
+              setCurrentSessionId(undefined);
+            }}
+          />
         }
         calendarPanel={
           <CalendarView 
             onEventDrop={(event, start, end) => {
               console.log('Event dropped:', { event, start, end });
-              // Trigger a refetch after event changes
               queryClient.invalidateQueries({ queryKey: ['events'] });
             }}
           />

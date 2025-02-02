@@ -1,5 +1,6 @@
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
-import { useState } from 'react';
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { useState } from "react";
+import { PanelRight } from "lucide-react";
 
 const ResizeHandle = () => {
   return (
@@ -26,9 +27,13 @@ export default function ResizableLayout({
     <div className="h-screen bg-gray-900">
       <PanelGroup direction="horizontal" className="h-full">
         {/* Left Panel */}
-        <Panel 
-          defaultSize={leftSize} 
-          minSize={15} 
+        <PanelRight
+          className="absolute top-4 left-4 z-10 text-white cursor-pointer"
+          onClick={() => setLeftSize(leftSize === 0 ? 20 : 0)}
+        />
+        <Panel
+          defaultSize={leftSize}
+          minSize={15}
           maxSize={30}
           className="bg-gray-900 p-4"
         >
@@ -38,9 +43,9 @@ export default function ResizableLayout({
         <ResizeHandle />
 
         {/* Chat Panel */}
-        <Panel 
-          defaultSize={chatSize} 
-          minSize={40} 
+        <Panel
+          defaultSize={chatSize}
+          minSize={40}
           maxSize={60}
           className="bg-gray-800"
         >
@@ -50,9 +55,9 @@ export default function ResizableLayout({
         <ResizeHandle />
 
         {/* Calendar Panel */}
-        <Panel 
-          defaultSize={rightSize} 
-          minSize={20} 
+        <Panel
+          defaultSize={rightSize}
+          minSize={20}
           maxSize={40}
           className="bg-teal-900/30"
         >
@@ -61,4 +66,4 @@ export default function ResizableLayout({
       </PanelGroup>
     </div>
   );
-} 
+}

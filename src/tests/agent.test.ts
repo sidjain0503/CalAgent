@@ -1,4 +1,4 @@
-import { CalendarAgent } from '../lib/agent';
+import { CalendarAgent } from '../lib/calagent/agent';
 
 describe('CalendarAgent', () => {
   let agent: CalendarAgent;
