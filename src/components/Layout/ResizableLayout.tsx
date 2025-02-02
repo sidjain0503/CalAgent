@@ -22,21 +22,36 @@ export default function ResizableLayout({
   const [leftSize, setLeftSize] = useState(20); // 20% of total width
   const [chatSize, setChatSize] = useState(50); // 50% of total width
   const [rightSize, setRightSize] = useState(30); // 30% of total width
+  const [isShowSidebar, setIsShowSidebar] = useState<boolean>(true);
 
   return (
     <div className="h-screen bg-gray-900">
       <PanelGroup direction="horizontal" className="h-full">
         {/* Left Panel */}
-        <PanelRight
-          className="absolute top-4 left-4 z-10 text-white cursor-pointer"
-          onClick={() => setLeftSize(leftSize === 0 ? 20 : 0)}
-        />
+        {!isShowSidebar && (
+          <PanelRight
+            className=" absolute top-6 left-4 z-10 text-white cursor-pointer hover:text-teal-600 hover:shadow-lg"
+            onClick={() => {
+              setLeftSize(20);
+              setIsShowSidebar(!isShowSidebar);
+            }}
+          />
+        )}
         <Panel
           defaultSize={leftSize}
-          minSize={15}
+          minSize={0}
           maxSize={30}
-          className="bg-gray-900 p-4"
+          className={`bg-gray-900 p-4 relative ${
+            !isShowSidebar ? "hidden w-0 opacity-0 " : "w-full"
+          } transition-all duration-300`}
         >
+          <PanelRight
+            className=" top-6 left-4 z-10 text-white cursor-pointer hover:text-teal-600 hover:shadow-lg"
+            onClick={() => {
+              setLeftSize(0);
+              setIsShowSidebar(!isShowSidebar);
+            }}
+          />
           {leftPanel}
         </Panel>
 

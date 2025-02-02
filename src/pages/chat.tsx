@@ -124,7 +124,7 @@ export default function AppPage() {
         chatPanel={
           <div className="h-full flex flex-col">
             <div className="flex justify-between items-center p-4 border-b border-gray-700">
-              <h1 className="text-xl text-white font-medium">Calendar Agent</h1>
+              <h1 className="text-xl text-white font-medium pl-5">Calendar Agent</h1>
               <button
                 onClick={() => signOut()}
                 className="px-4 py-2 text-white border border-white/20 rounded-lg 

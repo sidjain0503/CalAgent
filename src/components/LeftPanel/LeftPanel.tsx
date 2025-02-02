@@ -16,7 +16,6 @@ export default function LeftPanel({
   const [currentTime, setCurrentTime] = useState(new Date());
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isShowSidebar, setIsShowSidebar] = useState<boolean>(false);
 
   // Fetch chat sessions
   useEffect(() => {
@@ -84,12 +83,7 @@ export default function LeftPanel({
 
   return (
     <>
-    
-      <div
-        className={`h-full flex flex-col text-gray-100 ${
-          isShowSidebar ? "block" : "hidden w-0"
-        }`}
-      >
+      <div className={`h-full flex flex-col text-gray-100 `}>
         {/* Clock Section */}
 
         <div className="p-4 bg-gray-800/30 rounded-lg mb-4">
